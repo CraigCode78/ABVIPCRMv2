@@ -10,26 +10,27 @@ from string import Template
 from datetime import datetime
 
 def get_openai_key():
-    # Check if we're running on Streamlit Cloud
-    is_streamlit_cloud = os.environ.get('STREAMLIT_RUNTIME_ENV') == 'cloud'
+    # First, try to get the key from Streamlit secrets
+    try:
+        return st.secrets["OPENAI_API_KEY"]
+    except KeyError:
+        pass
     
-    if is_streamlit_cloud:
-        # Use the secret key when hosted on Streamlit Cloud
-        try:
-            return st.secrets["OPENAI_API_KEY"]
-        except KeyError:
-            st.error("OpenAI API key not found in Streamlit secrets.")
+    # If not found in secrets, check for environment variable
+    api_key = os.environ.get("OPENAI_API_KEY")
+    if api_key:
+        return api_key
+    
+    # If still not found, prompt the user (for local testing only)
+    if "openai_api_key" not in st.session_state:
+        api_key = st.text_input("Enter your OpenAI API key:", type="password")
+        if api_key:
+            st.session_state.openai_api_key = api_key
+        else:
+            st.warning("Please enter your OpenAI API key to proceed.")
             st.stop()
-    else:
-        # For local testing, use session state to store the API key
-        if "openai_api_key" not in st.session_state:
-            api_key = st.text_input("Enter your OpenAI API key for local testing:", type="password", key="openai_api_key_input")
-            if api_key:
-                st.session_state.openai_api_key = api_key
-            else:
-                st.warning("Please enter your OpenAI API key to proceed.")
-                st.stop()
-        return st.session_state.openai_api_key
+    
+    return st.session_state.openai_api_key
 
 # Initialize the OpenAI client
 client = OpenAI(api_key=get_openai_key())
